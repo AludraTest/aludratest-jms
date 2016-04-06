@@ -15,18 +15,12 @@
  */
 package org.aludratest.service.jms;
 
-import java.io.Serializable;
-
-import javax.jms.BytesMessage;
-import javax.jms.MapMessage;
-import javax.jms.Message;
-import javax.jms.ObjectMessage;
-import javax.jms.StreamMessage;
-import javax.jms.TextMessage;
-
 import org.aludratest.service.Interaction;
 import org.aludratest.service.TechnicalArgument;
 import org.aludratest.service.TechnicalLocator;
+
+import javax.jms.*;
+import java.io.Serializable;
 
 public interface JmsInteraction extends Interaction {
 
@@ -47,5 +41,34 @@ public interface JmsInteraction extends Interaction {
 	void sendMessage(Message message, @TechnicalLocator String destinationName);
 
 	Message receiveMessage(@TechnicalLocator String destinationName, @TechnicalArgument long timeout);
+
+	/**
+	 * Register the given MessageListener as TopicSubscriber on the given destination.
+	 *
+	 *
+	 * @param listener	The listener to register as TopicSubscriber
+	 * @param destinationName	The destination to subsribe to
+	 * @param messageSelector	The messageselector to use on receiving topic-messages.
+	 * @param durable		If the subscriber should be registered durable or not
+	 */
+	void subscribeTopic(MessageListener listener, @TechnicalLocator String destinationName, @TechnicalArgument String messageSelector, @TechnicalArgument String clientId, @TechnicalArgument boolean durable) throws JMSException;
+
+	/**
+	 * Unregister the given messagelistener that was registered with the given client-id
+	 * MessageListener will stop receiving messages.
+	 *
+	 * @param clientId	the client-id that was used to register and should be removed now.
+     */
+	void unsubscribeTopic(@TechnicalArgument String clientId) throws JMSException;
+
+	/**
+	 * Start the connection. If Subscribers are connected, they will start receiving Messages
+	 */
+	void startConnection() throws JMSException;
+
+	/**
+	 * Stop the connection. If Subscribers are connected, they will stop receiving Messages
+	 */
+	void stopConnection() throws JMSException;
 
 }

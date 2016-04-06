@@ -15,15 +15,6 @@
  */
 package org.aludratest.service.jms.impl;
 
-import java.util.Hashtable;
-
-import javax.jms.Connection;
-import javax.jms.ConnectionFactory;
-import javax.jms.JMSException;
-import javax.naming.Context;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-
 import org.aludratest.config.ConfigurationException;
 import org.aludratest.config.Preferences;
 import org.aludratest.config.ValidatingPreferencesWrapper;
@@ -33,7 +24,14 @@ import org.aludratest.service.jms.JmsCondition;
 import org.aludratest.service.jms.JmsInteraction;
 import org.aludratest.service.jms.JmsService;
 import org.aludratest.service.jms.JmsVerification;
-import org.databene.commons.StringUtil;
+
+import javax.jms.Connection;
+import javax.jms.ConnectionFactory;
+import javax.jms.JMSException;
+import javax.naming.Context;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import java.util.Hashtable;
 
 public class JmsServiceImpl extends AbstractConfigurableAludraService implements JmsService {
 
@@ -56,6 +54,7 @@ public class JmsServiceImpl extends AbstractConfigurableAludraService implements
 	public void close() {
 		if (connection != null) {
 			try {
+				connection.stop();
 				connection.close();
 			}
 			catch (JMSException e) {
@@ -93,21 +92,12 @@ public class JmsServiceImpl extends AbstractConfigurableAludraService implements
 				throw new ConfigurationException("The connection factory could not be found.");
 			}
 
-			if (StringUtil.isEmpty(userName)) {
-				connection = connectionFactory.createConnection();
-			}
-			else {
-				connection = connectionFactory.createConnection(userName, password);
-			}
 		}
 		catch (NamingException e) {
 			throw new TechnicalException("Could not retrieve objects from JNDI context", e);
 		}
-		catch (JMSException e) {
-			throw new TechnicalException("Could not establish JMS connection", e);
-		}
 
-		action = new JmsActionImpl(connection, initialContext);
+		action = new JmsActionImpl(connectionFactory, initialContext, userName, password);
 	}
 
 	@Override
@@ -127,7 +117,11 @@ public class JmsServiceImpl extends AbstractConfigurableAludraService implements
 
 	@Override
 	public void initService() {
-		// nothing to do
+		try {
+			this.connection.start();
+		} catch (JMSException e) {
+			throw new TechnicalException("Could not start connection", e);
+		}
 	}
 
 }

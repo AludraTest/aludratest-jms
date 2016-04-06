@@ -15,52 +15,56 @@
  */
 package org.aludratest.service.jms.impl;
 
-import java.io.Serializable;
-import java.util.List;
-
-import javax.jms.BytesMessage;
-import javax.jms.Connection;
-import javax.jms.Destination;
-import javax.jms.JMSException;
-import javax.jms.MapMessage;
-import javax.jms.Message;
-import javax.jms.MessageConsumer;
-import javax.jms.MessageProducer;
-import javax.jms.ObjectMessage;
-import javax.jms.Session;
-import javax.jms.StreamMessage;
-import javax.jms.TextMessage;
-import javax.naming.InitialContext;
-import javax.naming.NamingException;
-
-import org.aludratest.exception.AccessFailure;
-import org.aludratest.exception.AutomationException;
-import org.aludratest.exception.FunctionalFailure;
-import org.aludratest.exception.PerformanceFailure;
-import org.aludratest.exception.TechnicalException;
+import org.aludratest.exception.*;
 import org.aludratest.service.SystemConnector;
+import org.aludratest.service.TechnicalArgument;
+import org.aludratest.service.TechnicalLocator;
 import org.aludratest.service.jms.JmsCondition;
 import org.aludratest.service.jms.JmsInteraction;
 import org.aludratest.service.jms.JmsVerification;
 import org.aludratest.testcase.event.attachment.Attachment;
+import org.apache.commons.lang.StringUtils;
+import org.databene.commons.StringUtil;
+
+import javax.jms.*;
+import javax.naming.InitialContext;
+import javax.naming.NamingException;
+import java.io.Serializable;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
 
 public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerification {
 
-	private Connection connection;
-
 	private InitialContext context;
+
+    private ConnectionFactory connectionFactory;
+
+    private Connection connection;
+
+    private Map<String, Connection> dynamicConnections;
+
+    private Map<String, TopicSubscriber> durableConsumers;
 
 	private Session session;
 
-	public JmsActionImpl(Connection connection, InitialContext context) {
-		this.connection = connection;
+    private String userName;
+
+    private String password;
+
+	public JmsActionImpl(ConnectionFactory connectionFactory, InitialContext context, final String userName, final String password) {
+        this.dynamicConnections = new HashMap<String, Connection>();
+        this.durableConsumers = new HashMap<String, TopicSubscriber>();
+        this.connectionFactory = connectionFactory;
 		this.context = context;
-	}
+        this.userName = userName;
+        this.password = password;
+    }
 
 	public void close() {
 		if (session != null) {
 			try {
-				session.close();
+                session.close();
 			}
 			catch (JMSException e) {
 			}
@@ -179,9 +183,9 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 		try {
 			Destination dest = (Destination) context.lookup(destinationName);
 			producer = getSession().createProducer(dest);
-			connection.start();
+			this.startConnection();
 			producer.send(message);
-			connection.stop();
+			this.stopConnection();
 		}
 		catch (NamingException e) {
 			throw new AutomationException("Could not lookup destination " + destinationName, e);
@@ -209,7 +213,7 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 		try {
 			Destination dest = (Destination) context.lookup(destinationName);
 			consumer = getSession().createConsumer(dest);
-			connection.start();
+            this.startConnection();
 			Message msg;
 			if (timeout == -1) {
 				msg = consumer.receive();
@@ -217,7 +221,7 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 			else {
 				msg = consumer.receive(timeout);
 			}
-			connection.stop();
+			this.stopConnection();
 			if (msg == null) {
 				throw new PerformanceFailure("Destination " + destinationName + " did not deliver a message within timeout");
 			}
@@ -243,10 +247,100 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 		}
 	}
 
+    private Connection buildConnection() {
+        try {
+            if (StringUtil.isEmpty(userName)) {
+                return this.connectionFactory.createConnection();
+            }
+            else {
+                return this.connectionFactory.createConnection(this.userName, this.password);
+            }
+
+        } catch (JMSException e) {
+            throw new TechnicalException("Could not establish JMS connection", e);
+        }
+    }
+
+    private Connection getConnection() {
+        if (this.connection == null) {
+            this.connection = buildConnection();
+        }
+        return this.connection;
+    }
+
+    private Connection getDynamicConnection(String clientId) throws  JMSException {
+        Connection dynC = this.dynamicConnections.get(clientId);
+        if (dynC == null) {
+            dynC = buildConnection();
+            dynC.setClientID(clientId);
+            this.dynamicConnections.put(clientId,dynC);
+            dynC.start();
+        }
+        return dynC;
+
+    }
+
+
 	private Session getSession() throws JMSException {
 		if (session == null) {
-			session = connection.createSession(false, Session.AUTO_ACKNOWLEDGE);
+			session = getConnection().createSession(false, Session.AUTO_ACKNOWLEDGE);
 		}
 		return session;
 	}
+
+	@Override
+	public void subscribeTopic(MessageListener listener, @TechnicalLocator String destinationName, @TechnicalArgument String messageSelector, @TechnicalArgument String clientId, @TechnicalArgument boolean durable) throws JMSException  {
+		if (StringUtils.isEmpty(clientId)) {
+			throw new IllegalArgumentException("Client-Id must be provided to subscribe!");
+		}
+        Topic topic;
+        try {
+            topic = (Topic) context.lookup(destinationName);
+        } catch (NamingException e) {
+            throw new AutomationException("Could not lookup destination " + destinationName, e);
+        }
+
+        Connection c = getDynamicConnection(clientId);
+
+        TopicSession ts = (TopicSession) c.createSession(false,Session.AUTO_ACKNOWLEDGE);
+		if (durable) {
+            TopicSubscriber subscriber = ts.createDurableSubscriber(topic,clientId,messageSelector,false);
+            subscriber.setMessageListener(listener);
+            this.durableConsumers.put(clientId,subscriber);
+		} else {
+            ts.createSubscriber(topic,messageSelector,true).setMessageListener(listener);
+        }
+
+	}
+
+
+    @Override
+    public void unsubscribeTopic(@TechnicalArgument String clientId) throws JMSException {
+        if (StringUtils.isEmpty(clientId)) {
+            throw new IllegalArgumentException("Client-Id must be provided to unsubscribe");
+        }
+
+        Connection c = getDynamicConnection(clientId);
+        c.stop();
+
+        TopicSubscriber subscriber = this.durableConsumers.get(clientId);
+        if (subscriber != null) {
+            subscriber.close();
+            c.createSession(false,Session.AUTO_ACKNOWLEDGE).unsubscribe(clientId);
+            this.durableConsumers.remove(clientId);
+        }
+        c.close();
+        this.dynamicConnections.remove(c);
+
+    }
+
+    @Override
+    public void startConnection() throws JMSException {
+        this.getConnection().start();
+    }
+
+    @Override
+    public void stopConnection() throws JMSException {
+        this.getConnection().stop();
+    }
 }
