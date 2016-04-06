@@ -334,13 +334,11 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 
     }
 
-    @Override
-    public void startConnection() throws JMSException {
+    private void startConnection() throws JMSException {
         this.getConnection().start();
     }
 
-    @Override
-    public void stopConnection() throws JMSException {
+    private void stopConnection() throws JMSException {
         this.getConnection().stop();
     }
 }

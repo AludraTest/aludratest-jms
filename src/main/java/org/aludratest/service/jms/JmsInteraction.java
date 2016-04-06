@@ -61,14 +61,5 @@ public interface JmsInteraction extends Interaction {
      */
 	void unsubscribeTopic(@TechnicalArgument String clientId) throws JMSException;
 
-	/**
-	 * Start the connection. If Subscribers are connected, they will start receiving Messages
-	 */
-	void startConnection() throws JMSException;
-
-	/**
-	 * Stop the connection. If Subscribers are connected, they will stop receiving Messages
-	 */
-	void stopConnection() throws JMSException;
 
 }
