@@ -46,8 +46,16 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 
     private Connection connection;
 
+	/**
+	 * Using additional connections for topic subscriptions to avoid interferrence with
+	 * starting / stopping the default connection during queue-messaging
+	 */
     private Map<String, Connection> dynamicConnections;
 
+	/**
+	 * Need to keep track of durable subscribers to be abled to disconnect them on
+	 * command.
+	 */
     private Map<String, TopicSubscriber> durableConsumers;
 
 	private Session session;
