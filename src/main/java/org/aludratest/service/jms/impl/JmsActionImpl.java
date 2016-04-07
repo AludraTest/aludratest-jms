@@ -25,6 +25,8 @@ import org.aludratest.service.jms.JmsVerification;
 import org.aludratest.testcase.event.attachment.Attachment;
 import org.apache.commons.lang.StringUtils;
 import org.databene.commons.StringUtil;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 import javax.jms.*;
 import javax.naming.InitialContext;
@@ -35,6 +37,8 @@ import java.util.List;
 import java.util.Map;
 
 public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerification {
+
+	private static final Logger LOGGER = LoggerFactory.getLogger(JmsActionImpl.class);
 
 	private InitialContext context;
 
@@ -52,6 +56,8 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 
     private String password;
 
+	private String clientId;
+
 	public JmsActionImpl(ConnectionFactory connectionFactory, InitialContext context, final String userName, final String password) {
         this.dynamicConnections = new HashMap<String, Connection>();
         this.durableConsumers = new HashMap<String, TopicSubscriber>();
@@ -59,14 +65,44 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 		this.context = context;
         this.userName = userName;
         this.password = password;
+		this.clientId = userName + "@" + JmsActionImpl.class.getSimpleName() + this.hashCode();
     }
 
 	public void close() {
+		LOGGER.info("Closing JmsServcie for clientId " + this.clientId );
+		for (TopicSubscriber subscriber : this.durableConsumers.values()) {
+			try {
+				subscriber.close();
+			}
+			catch (JMSException e) {
+				LOGGER.debug("Failed to close subscriber: ", e );
+			}
+		}
+		for (Map.Entry<String, Connection> entry : this.dynamicConnections.entrySet()) {
+			try {
+				Connection dynC = entry.getValue();
+				dynC.stop();
+				dynC.close();
+			}
+			catch (JMSException e) {
+				LOGGER.debug("Failed to close dynamic connection [ " + entry.getKey() + " ] : ", e );
+			}
+		}
 		if (session != null) {
 			try {
                 session.close();
 			}
 			catch (JMSException e) {
+				LOGGER.debug("Failed to close jms session : ", e );
+			}
+		}
+		if (connection != null) {
+			try {
+				connection.stop();
+				connection.close();
+			}
+			catch (JMSException e) {
+				LOGGER.debug("Failed to close jms connection for client-id [ " + this.clientId + " ] : ", e );
 			}
 		}
 	}
@@ -181,6 +217,7 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 	public void sendMessage(Message message, String destinationName) {
 		MessageProducer producer = null;
 		try {
+			LOGGER.debug("Sending message to destination "  + destinationName);
 			Destination dest = (Destination) context.lookup(destinationName);
 			producer = getSession().createProducer(dest);
 			this.startConnection();
@@ -247,15 +284,25 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 		}
 	}
 
-    private Connection buildConnection() {
-        try {
+	/**
+	 * Build a new connection with the given clientId
+	 *
+	 * @param clientId	the clientId
+
+	 * @return
+     */
+    private Connection buildConnection(String clientId) {
+		try {
+			Connection result;
             if (StringUtil.isEmpty(userName)) {
-                return this.connectionFactory.createConnection();
+                result = this.connectionFactory.createConnection();
             }
             else {
-                return this.connectionFactory.createConnection(this.userName, this.password);
+				result = this.connectionFactory.createConnection(this.userName, this.password);
             }
+			result.setClientID(clientId);
 
+			return result;
         } catch (JMSException e) {
             throw new TechnicalException("Could not establish JMS connection", e);
         }
@@ -263,17 +310,36 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 
     private Connection getConnection() {
         if (this.connection == null) {
-            this.connection = buildConnection();
+            this.connection = buildConnection(this.clientId);
         }
         return this.connection;
     }
 
-    private Connection getDynamicConnection(String clientId) throws  JMSException {
-        Connection dynC = this.dynamicConnections.get(clientId);
+	/**
+	 * Creates a dynamic connection for the given subscriptionName.
+	 *
+	 * According to JavaDoc of {@link TopicSession#createDurableSubscriber(Topic, String, String, boolean)}
+	 * durablesubscriptions must use the same clientIds on every connection to a particular subscription.
+	 * Therefore the clientId used for dynamic-connections is derived from the folloging rule:
+	 *
+	 * this.userName + "@" + this.getClass().getSimpleName() + "[" + @param subscriptionName + "]"
+	 *
+	 * Even new Instances of JmsActionImpl will produce a clientId that is abled to reconnect to existing
+	 * durable subscriptions.
+	 *
+	 * @param subscriptionName	the subscriptionname
+	 * @return	The connection.
+	 *
+	 * @throws JMSException
+     */
+    private Connection getDynamicConnection(String subscriptionName) throws  JMSException {
+
+		final String dynClientID =
+				this.userName + "@" + this.getClass().getSimpleName() + "[" +subscriptionName + "]";
+        Connection dynC = this.dynamicConnections.get(dynClientID);
         if (dynC == null) {
-            dynC = buildConnection();
-            dynC.setClientID(clientId);
-            this.dynamicConnections.put(clientId,dynC);
+            dynC = buildConnection(dynClientID);
+            this.dynamicConnections.put(dynClientID,dynC);
             dynC.start();
         }
         return dynC;
@@ -289,9 +355,9 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 	}
 
 	@Override
-	public void subscribeTopic(MessageListener listener, @TechnicalLocator String destinationName, @TechnicalArgument String messageSelector, @TechnicalArgument String clientId, @TechnicalArgument boolean durable) throws JMSException  {
-		if (StringUtils.isEmpty(clientId)) {
-			throw new IllegalArgumentException("Client-Id must be provided to subscribe!");
+	public void subscribeTopic(MessageListener listener, @TechnicalLocator String destinationName, @TechnicalArgument String messageSelector, @TechnicalArgument String subscriptionName, @TechnicalArgument boolean durable) throws JMSException  {
+		if (StringUtils.isEmpty(subscriptionName)) {
+			throw new IllegalArgumentException("subscriptionName must be provided to subscribe!");
 		}
         Topic topic;
         try {
@@ -300,13 +366,14 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
             throw new AutomationException("Could not lookup destination " + destinationName, e);
         }
 
-        Connection c = getDynamicConnection(clientId);
+		LOGGER.debug("Creating topic-subscriber for topic " + destinationName + " and subscriptionname " + subscriptionName);
+	    Connection c = getDynamicConnection(subscriptionName);
 
         TopicSession ts = (TopicSession) c.createSession(false,Session.AUTO_ACKNOWLEDGE);
 		if (durable) {
-            TopicSubscriber subscriber = ts.createDurableSubscriber(topic,clientId,messageSelector,false);
+            TopicSubscriber subscriber = ts.createDurableSubscriber(topic,subscriptionName,messageSelector,false);
             subscriber.setMessageListener(listener);
-            this.durableConsumers.put(clientId,subscriber);
+            this.durableConsumers.put(subscriptionName,subscriber);
 		} else {
             ts.createSubscriber(topic,messageSelector,true).setMessageListener(listener);
         }
@@ -315,19 +382,19 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 
 
     @Override
-    public void unsubscribeTopic(@TechnicalArgument String clientId) throws JMSException {
+    public void unsubscribeTopic(@TechnicalArgument String subscriptionName) throws JMSException {
         if (StringUtils.isEmpty(clientId)) {
             throw new IllegalArgumentException("Client-Id must be provided to unsubscribe");
         }
-
-        Connection c = getDynamicConnection(clientId);
+		LOGGER.debug("Unsubscribing from subscription " + subscriptionName);
+        Connection c = getDynamicConnection(subscriptionName);
         c.stop();
 
-        TopicSubscriber subscriber = this.durableConsumers.get(clientId);
+        TopicSubscriber subscriber = this.durableConsumers.get(subscriptionName);
         if (subscriber != null) {
             subscriber.close();
-            c.createSession(false,Session.AUTO_ACKNOWLEDGE).unsubscribe(clientId);
-            this.durableConsumers.remove(clientId);
+            c.createSession(false,Session.AUTO_ACKNOWLEDGE).unsubscribe(subscriptionName);
+            this.durableConsumers.remove(subscriptionName);
         }
         c.close();
         this.dynamicConnections.remove(c);

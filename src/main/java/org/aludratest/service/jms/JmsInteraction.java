@@ -49,17 +49,18 @@ public interface JmsInteraction extends Interaction {
 	 * @param listener	The listener to register as TopicSubscriber
 	 * @param destinationName	The destination to subsribe to
 	 * @param messageSelector	The messageselector to use on receiving topic-messages.
+	 * @param subscriptionName 	The subscriptionname to be used to create the subscription.
 	 * @param durable		If the subscriber should be registered durable or not
 	 */
-	void subscribeTopic(MessageListener listener, @TechnicalLocator String destinationName, @TechnicalArgument String messageSelector, @TechnicalArgument String clientId, @TechnicalArgument boolean durable) throws JMSException;
+	void subscribeTopic(MessageListener listener, @TechnicalLocator String destinationName, @TechnicalArgument String messageSelector, @TechnicalArgument String subscriptionName, @TechnicalArgument boolean durable) throws JMSException;
 
 	/**
 	 * Unregister the given messagelistener that was registered with the given client-id
 	 * MessageListener will stop receiving messages.
 	 *
-	 * @param clientId	the client-id that was used to register and should be removed now.
+	 * @param subscriptionName	the subscriptionName that was used to register and should be removed now.
      */
-	void unsubscribeTopic(@TechnicalArgument String clientId) throws JMSException;
+	void unsubscribeTopic(@TechnicalArgument String subscriptionName) throws JMSException;
 
 
 }

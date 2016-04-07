@@ -25,9 +25,7 @@ import org.aludratest.service.jms.JmsInteraction;
 import org.aludratest.service.jms.JmsService;
 import org.aludratest.service.jms.JmsVerification;
 
-import javax.jms.Connection;
 import javax.jms.ConnectionFactory;
-import javax.jms.JMSException;
 import javax.naming.Context;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
@@ -41,8 +39,6 @@ public class JmsServiceImpl extends AbstractConfigurableAludraService implements
 
 	private ConnectionFactory connectionFactory;
 
-	private Connection connection;
-
 	private JmsActionImpl action;
 
 	@Override
@@ -52,15 +48,6 @@ public class JmsServiceImpl extends AbstractConfigurableAludraService implements
 
 	@Override
 	public void close() {
-		if (connection != null) {
-			try {
-				connection.stop();
-				connection.close();
-			}
-			catch (JMSException e) {
-				// ignore here
-			}
-		}
 		if (action != null) {
 			action.close();
 		}
@@ -117,11 +104,6 @@ public class JmsServiceImpl extends AbstractConfigurableAludraService implements
 
 	@Override
 	public void initService() {
-		try {
-			this.connection.start();
-		} catch (JMSException e) {
-			throw new TechnicalException("Could not start connection", e);
-		}
 	}
 
 }
