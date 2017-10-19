@@ -47,7 +47,7 @@ public class TextMessageData extends JmsMessageData {
 	}
 	
 	public String toString() {
-		return "TextMessageData: "+messageText;
+		return "TextMessageData: " + messageText;
 		
 	}
 	

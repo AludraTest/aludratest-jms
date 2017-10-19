@@ -40,13 +40,15 @@ public abstract class JmsMessageData extends Data {
 	}
 
 	public Map<String, Object> getProperties() {
-		return properties;
+		
+		HashMap<String, Object> returnPropList = new HashMap<String, Object>(properties.size());
+		for(Map.Entry<String, Object> entry: properties.entrySet()) {
+			returnPropList.put(entry.getKey(), entry.getValue());
+		}
+		
+		return returnPropList;
 	}
 	
-	public void setProperties(Map<String, Object> props) {
-		this.properties = props;
-	}
-
 	/**
 	 * Adds one property
 	 * @param key

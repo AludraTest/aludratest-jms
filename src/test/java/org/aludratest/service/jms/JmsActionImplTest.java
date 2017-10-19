@@ -177,7 +177,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     
     @Test
     public void testBasicJmsTextMessageData() throws UnsupportedEncodingException {
-        String queueName = QUEUE_NAME+".TextMessage.1";
+        String queueName = QUEUE_NAME + ".TextMessage.1";
         String textContent = UUID.randomUUID().toString();
 
         LOGGER.info("Begin testBasicJmsWithTextMessageData");
@@ -191,10 +191,6 @@ public class JmsActionImplTest extends AbstractJmsTest {
         assertTrue(atIterator.hasNext());
         Attachment attachment = atIterator.next();
 		assertEquals("Message textMessageData", attachment.getLabel());
-		
-//		String realContent = new String(attachment.getFileData(), Encodings.UTF_8);
-//		LOGGER.info("realContent: " + realContent);
-//      assertEquals(textContent, realContent);
 
         LOGGER.info("Receiving TextMessage from queue " + queueName);
         String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, null, 20);
@@ -207,7 +203,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     
     @Test
     public void testBasicJmsTextMessageDataWithStringProp() throws UnsupportedEncodingException {
-        String queueName = QUEUE_NAME+".TextMessage.2";
+        String queueName = QUEUE_NAME + ".TextMessage.2";
         String textContent = UUID.randomUUID().toString();
 
         LOGGER.info("Begin testBasicJmsTextMessageDataWithStringProp");
@@ -222,10 +218,6 @@ public class JmsActionImplTest extends AbstractJmsTest {
         assertTrue(atIterator.hasNext());
         Attachment attachment = atIterator.next();
 		assertEquals("Message textMessageData", attachment.getLabel());
-		
-//		String realContent = new String(attachment.getFileData(), Encodings.UTF_8);
-//		LOGGER.info("realContent: " + realContent);
-//      assertEquals(textContent, realContent);
 
         LOGGER.info("Receiving TextMessage from queue " + queueName);
         String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, "KEY='valueTest2'", 20);
@@ -238,7 +230,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     
     @Test
     public void testBasicJmsTextMessageDataWithStringProp_wrongSelector() throws UnsupportedEncodingException {
-        String queueName = QUEUE_NAME+".TextMessage.3";
+        String queueName = QUEUE_NAME + ".TextMessage.3";
         String textContent = UUID.randomUUID().toString();
 
         LOGGER.info("Begin testBasicJmsTextMessageDataWithStringProp_wrongSelector");
@@ -253,10 +245,6 @@ public class JmsActionImplTest extends AbstractJmsTest {
         assertTrue(atIterator.hasNext());
         Attachment attachment = atIterator.next();
 		assertEquals("Message textMessageData", attachment.getLabel());
-		
-//		String realContent = new String(attachment.getFileData(), Encodings.UTF_8);
-//		LOGGER.info("realContent: " + realContent);
-//      assertEquals(textContent, realContent);
 
         LOGGER.info("Receiving TextMessage from queue " + queueName);
         String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, "KEY='valueTestNOT-THERE'", 20);
@@ -271,7 +259,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     public void testBasicJmsFileMessageData() throws IOException {
     	
     	LOGGER.info("Begin testBasicJmsFileMessageData");
-    	String queueName = QUEUE_NAME+".FileMessage.1";
+    	String queueName = QUEUE_NAME + ".FileMessage.1";
         String fileUri = "/config/jmsTest/jms.properties";
         FileMessageData fileMessageData = new FileMessageData(fileUri);
 
@@ -300,7 +288,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     public void testBasicJmsFileMessageDataWithStringProp() throws IOException {
     	
     	LOGGER.info("Begin testBasicJmsFileMessageDataWithStringProp");
-        String queueName = QUEUE_NAME+".FileMessage.2";
+        String queueName = QUEUE_NAME + ".FileMessage.2";
         String fileUri = "/config/jmsTest/jms.properties";
         FileMessageData fileMessageData = new FileMessageData(fileUri);
         fileMessageData.addProperty("KEYPROP", "propValue");
@@ -332,7 +320,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     public void testBasicJmsObjectMessageDataInteger() throws IOException {
     	
     	LOGGER.info("Begin testBasicJmsObjectMessageDataInteger");
-    	String queueName = QUEUE_NAME+".ObjectMessage.1";
+    	String queueName = QUEUE_NAME + ".ObjectMessage.1";
         
     	Integer messageObject = new Integer(12);
     	
@@ -368,7 +356,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     public void testBasicJmsObjectMessageDataIntegerWithProp() throws IOException {
     	
     	LOGGER.info("Begin testBasicJmsObjectMessageDataIntegerWithProp");
-    	String queueName = QUEUE_NAME+".ObjectMessage.2";
+    	String queueName = QUEUE_NAME + ".ObjectMessage.2";
         
     	Integer messageObject = new Integer(12);
     	
@@ -406,7 +394,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     public void testBasicJmsObjectMessageDataOtherObj() throws IOException {
     	
     	LOGGER.info("Begin testBasicJmsObjectMessageDataOtherObj");
-    	String queueName = QUEUE_NAME+".ObjectMessage.3";
+    	String queueName = QUEUE_NAME + ".ObjectMessage.3";
         
     	String name = "testBasicJmsObjectMessageDataOtherObj";
     	ObjDataTest objectToSend = new ObjDataTest(name);
@@ -444,7 +432,7 @@ public class JmsActionImplTest extends AbstractJmsTest {
     public void testBasicJmsObjectMessageDataOtherObjWithProp() throws IOException {
     	
     	LOGGER.info("Begin testBasicJmsObjectMessageDataOtherObjWithProp");
-    	String queueName = QUEUE_NAME+".ObjectMessage.4";       
+    	String queueName = QUEUE_NAME + ".ObjectMessage.4";       
 
     	String name = "testBasicJmsObjectMessageDataOtherObjWithProp";
     	ObjDataTest objectToSend = new ObjDataTest(name);
