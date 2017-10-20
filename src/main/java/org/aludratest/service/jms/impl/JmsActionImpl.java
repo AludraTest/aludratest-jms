@@ -190,10 +190,7 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 			String fileContent = IOUtil.getContentOfURI(fileMessageData.getFileUri());
 			
 			TextMessageData textMessageData = new TextMessageData(fileContent);
-			for(Map.Entry<String, Object> entry: fileMessageData.getProperties().entrySet()) {
-				textMessageData.addProperty(entry.getKey(), entry.getValue());
-			}
-			
+			textMessageData.setProperties(fileMessageData.getProperties());
 			
 			sendMessage(textMessageData, destinationName);
 			return fileContent;

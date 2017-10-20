@@ -19,6 +19,7 @@ import org.junit.Test;
 
 import static org.junit.Assert.assertEquals;
 
+import java.util.HashMap;
 import java.util.Map;
 
 /**
@@ -62,21 +63,56 @@ public class TextMessageDataTest {
 		Map<String, Object> properties = message.getProperties();
 		
 		//assert size
-		assertEquals(1, message.getProperties().size());
+		assertEquals(1, properties.size());
 		//assert properties content
-		assertEquals(value1, message.getProperties().get(key1));
+		assertEquals(value1, properties.get(key1));
+		
+	}
+	
+	@Test
+    public void testSimpleMessageWithPropertiesReset() {
+		
+		String messageValue = "message Value reset";
+		String key1 = "key1";
+		String value1 = "value1";
+		
+		TextMessageData message = new TextMessageData(messageValue);
+		message.addProperty(key1, value1);
+		
+		String key2 = "key2";
+		String value2 = "value2";
+		String key3 = "key3";
+		String value3 = "value3";
+		
+		HashMap<String, Object> properties2 = new HashMap<String, Object>();
+		properties2.put(key2, value2);
+		properties2.put(key3, value3);
+		
+		//This reset the properties list: key1 no longer exists, only key2 and key3
+		message.setProperties(properties2);
+		
+		assertEquals(false, properties2.containsKey(key1));
+		assertEquals(2, properties2.size());
+		assertEquals(value2, properties2.get(key2));
+		assertEquals(value3, properties2.get(key3));
+		
+	}
+	
+	@Test(expected=UnsupportedOperationException.class)
+    public void testSimpleMessageWithPropertiesUnsupportedException() {
+		
+		String messageValue = "message Value Unsupported";
+		String key1 = "key1";
+		String value1 = "value1";
+		
+		TextMessageData message = new TextMessageData(messageValue);
+		message.addProperty(key1, value1);
 		
 		String key2 = "key2";
 		String value2 = "value2";
 		
-		properties.put(key2, value2);
-		
-		//assert size: should remain 1. previous put have no effect
-		assertEquals(1, message.getProperties().size());
-		
-		properties.clear();
-		
-		//assert size: should remain 1. previous clear have no effect
-		assertEquals(1, message.getProperties().size());
+		//this is not allowed!!
+		message.getProperties().put(key2, value2);
 	}
+	
 }
