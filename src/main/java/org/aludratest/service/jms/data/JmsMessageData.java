@@ -15,6 +15,10 @@
  */
 package org.aludratest.service.jms.data;
 
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
+
 import org.aludratest.dict.Data;
 
 /**
@@ -23,5 +27,44 @@ import org.aludratest.dict.Data;
  */
 
 public abstract class JmsMessageData extends Data {
-	// empty parent interface
+	// parent class
+	
+	/**
+	 * Properties to apply the jms message.
+	 * Supports the properties of javax.jms.Message
+	 */
+	private Map<String, Object> properties;
+	
+	JmsMessageData() {
+		//default, empty property list
+		properties = new HashMap<String, Object>();
+	}
+
+	/**
+	 * Returns the list of properties
+	 * @return
+	 */
+	public Map<String, Object> getProperties() {
+		return Collections.unmodifiableMap(properties);
+	}
+	
+	/**
+	 * Set the properties
+	 * @param props
+	 */
+	public void setProperties(Map<String, Object> props) {
+		this.properties.clear();
+		this.properties.putAll(props);
+	}
+	
+	/**
+	 * Adds one property
+	 * @param key
+	 * @param value
+	 */
+	public void addProperty(String key, Object value) {
+		this.properties.put(key, value);
+	}
+	
+	
 }

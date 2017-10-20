@@ -22,6 +22,9 @@ import org.aludratest.service.AttachResult;
 import org.aludratest.service.Interaction;
 import org.aludratest.service.TechnicalArgument;
 import org.aludratest.service.TechnicalLocator;
+import org.aludratest.service.jms.data.FileMessageData;
+import org.aludratest.service.jms.data.ObjectMessageData;
+import org.aludratest.service.jms.data.TextMessageData;
 import org.databene.commons.Validator;
 
 public interface JmsInteraction extends Interaction {
@@ -36,6 +39,27 @@ public interface JmsInteraction extends Interaction {
 
 	@AttachResult("Message content (BASE64)") String sendFileAsBytesMessage(String fileUri, @TechnicalLocator String destinationName);
 
+	/**
+	 * Send a jms message (TextMessageData) with the jms properties support
+	 * @param textMessageData the jms message
+	 * @param destinationName jms destination.
+	 */
+	void sendMessage(@AttachParameter("Message textMessageData") TextMessageData textMessageData, @TechnicalLocator String destinationName);
+
+	/**
+	 * Send a jms message (ObjectMessageData) with the jms properties support
+	 * @param objectMessageData the jms message
+	 * @param destinationName jms destination.
+	 */
+	void sendMessage(@AttachParameter("Message objectMessageData") ObjectMessageData objectMessageData, @TechnicalLocator String destinationName);
+	
+	/**
+	 * Send a jms message (FileMessageData) with the jms properties support
+	 * @param fileMessageData the jms message
+	 * @param destinationName jms destination.
+	 * @return file content
+	 */
+	@AttachResult("Message text") String sendMessage(@AttachParameter("Message fileMessageData") FileMessageData fileMessageData, @TechnicalLocator String destinationName);
 	
 	// receiving messages from a queue -----------------------------------------
 	

@@ -67,7 +67,28 @@ public abstract class JmsSender<E extends JmsSender<E>> implements ActionWordLib
 		service.perform().sendFileAsBytesMessage(data.getFileUri(), destinationName);
 		return verifyState();
 	}
-	
+
+	/** Sends a text message to this sender's destination. This method supports jms properties.
+	 *  @param data a data object holding the message text */
+	public final E sendMessage(TextMessageData data) {
+		service.perform().sendMessage(data, destinationName);
+		return verifyState();
+	}
+
+	/** Sends an object message to this sender's destination. This method supports jms properties.
+	 *  @param data a data object holding the message data */
+	public final E sendMessage(ObjectMessageData data) {
+		service.perform().sendMessage(data, destinationName);
+		return verifyState();
+	}
+
+	/** Reads a text file and sends its content as text message to this sender's destination. This method supports jms properties.
+	 *  @param data a data object holding the URI of the file to read */
+	public final E sendMessage(FileMessageData data) {
+		service.perform().sendMessage(data, destinationName);
+		return verifyState();
+	}
+
 	@SuppressWarnings("unchecked")
 	@Override
 	public E verifyState() {

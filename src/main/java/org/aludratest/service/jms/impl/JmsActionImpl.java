@@ -50,6 +50,9 @@ import org.aludratest.service.TechnicalLocator;
 import org.aludratest.service.jms.JmsCondition;
 import org.aludratest.service.jms.JmsInteraction;
 import org.aludratest.service.jms.JmsVerification;
+import org.aludratest.service.jms.data.FileMessageData;
+import org.aludratest.service.jms.data.ObjectMessageData;
+import org.aludratest.service.jms.data.TextMessageData;
 import org.aludratest.testcase.event.attachment.Attachment;
 import org.aludratest.testcase.event.attachment.StringAttachment;
 import org.databene.commons.Assert;
@@ -99,7 +102,7 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
     }
 
 	public void close() {
-		LOGGER.info("Closing JmsServcie for clientId " + this.clientId );
+		LOGGER.info("Closing JmsService for clientId " + this.clientId );
 		for (TopicHandler handler : this.topicHandlers.values()) {
 			handler.stop();
 			handler.close();
@@ -146,6 +149,58 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 			return false;
 		}
 	}
+	
+
+	@Override
+	public void sendMessage(TextMessageData textMessageData, String destinationName) {
+		memorizeMessage(textMessageData.getMessageText());
+		try {
+			TextMessage message = createTextMessage();
+			message.setText(textMessageData.getMessageText());
+						
+			sendMessage(addPropertiesToMessage(message, textMessageData.getProperties()), destinationName);
+		}
+		catch (JMSException e) {
+			throw new TechnicalException("Could not send text message", e);
+		}
+		
+	}
+
+	@Override
+	public void sendMessage(ObjectMessageData objectMessageData, String destinationName) {
+		memorizeMessage(objectMessageData.getMessageObject());
+		try {
+			ObjectMessage msg = createObjectMessage();
+			msg.setObject(objectMessageData.getMessageObject());
+			
+			sendMessage(addPropertiesToMessage(msg, objectMessageData.getProperties()), destinationName);
+			
+		}
+		catch (JMSException e) {
+			throw new TechnicalException("Could not send object message", e);
+		}
+		
+	}
+
+	
+
+	@Override
+	public String sendMessage(FileMessageData fileMessageData, String destinationName) {
+		try {
+			String fileContent = IOUtil.getContentOfURI(fileMessageData.getFileUri());
+			
+			TextMessageData textMessageData = new TextMessageData(fileContent);
+			textMessageData.setProperties(fileMessageData.getProperties());
+			
+			sendMessage(textMessageData, destinationName);
+			return fileContent;
+		}
+		catch (IOException e) {
+			throw new AccessFailure("File access failed", e);
+		}
+	}
+
+	
 
 	@Override
 	public void sendTextMessage(String text, String destinationName) {
@@ -223,7 +278,7 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 			memorizeMessage(object);
 			return object;
 		} catch (JMSException e) {
-			throw new AutomationException("Unable to read message text", e);
+			throw new AutomationException("Unable to read message object", e);
 		}
 	}
 	
@@ -574,5 +629,21 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
     private void stopConnection() throws JMSException {
         this.getOrCreateConnection().stop();
     }
+    
+    /**
+     * Applies the properties to javax.jms.Message
+     *  
+     * @param message the jms message
+     * @param properties Map of properties. The list contains 'free' content, so if there is some property that is not supported by the javax.jms.Message, an exception will be thrown.
+     * @return the update jms message with the properties, if they exist
+     * @throws JMSException
+     */
+    private Message addPropertiesToMessage(Message message, Map<String, Object> properties) throws JMSException {
+		// Adds the properties to the jms message.
+		for(Map.Entry<String, Object> entry : properties.entrySet()) {
+			message.setObjectProperty(entry.getKey(), entry.getValue());
+		}
+		return message;
+	}
 
 }

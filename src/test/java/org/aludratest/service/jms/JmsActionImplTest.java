@@ -20,15 +20,20 @@ import static org.junit.Assert.assertEquals;
 import static org.junit.Assert.assertNull;
 import static org.junit.Assert.assertTrue;
 
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.util.Iterator;
 import java.util.UUID;
 
-import org.aludratest.service.jms.impl.JmsActionImpl;
+import org.aludratest.service.jms.data.FileMessageData;
+import org.aludratest.service.jms.data.ObjectMessageData;
+import org.aludratest.service.jms.data.TextMessageData;
+import org.aludratest.service.jms.util.ObjDataTest;
 import org.aludratest.testcase.event.attachment.Attachment;
 import org.apache.commons.lang.StringUtils;
 import org.apache.log4j.Logger;
 import org.databene.commons.Encodings;
+import org.databene.commons.IOUtil;
 import org.junit.Assert;
 import org.junit.Test;
 
@@ -37,7 +42,7 @@ import org.junit.Test;
  */
 public class JmsActionImplTest extends AbstractJmsTest {
 
-    private static final Logger LOGGER = Logger.getLogger(JmsActionImpl.class);
+    private static final Logger LOGGER = Logger.getLogger(JmsActionImplTest.class);
 
     private static final String QUEUE_NAME = "dynamicQueues/testQueue1";
 
@@ -168,6 +173,297 @@ public class JmsActionImplTest extends AbstractJmsTest {
         service2.close();
 
         LOGGER.info("End testDurableTopicSubscriberRegisterUnregister");
+    }
+    
+    @Test
+    public void testBasicJmsTextMessageData() throws UnsupportedEncodingException {
+        String queueName = QUEUE_NAME + ".TextMessage.1";
+        String textContent = UUID.randomUUID().toString();
+
+        LOGGER.info("Begin testBasicJmsWithTextMessageData");
+        
+        TextMessageData textMessageData = new TextMessageData(textContent);
+
+        LOGGER.info("Creating and sending TextMessage to queue " + queueName);
+        service.perform().sendMessage(textMessageData, queueName);
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message textMessageData", attachment.getLabel());
+
+        LOGGER.info("Receiving TextMessage from queue " + queueName);
+        String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, null, 20);
+
+        Assert.assertNotNull(receivedMessageText);
+        Assert.assertTrue(StringUtils.equalsIgnoreCase(textContent, receivedMessageText));
+
+        LOGGER.info("End testBasicJmsWithTextMessageData");
+    }
+    
+    @Test
+    public void testBasicJmsTextMessageDataWithStringProp() throws UnsupportedEncodingException {
+        String queueName = QUEUE_NAME + ".TextMessage.2";
+        String textContent = UUID.randomUUID().toString();
+
+        LOGGER.info("Begin testBasicJmsTextMessageDataWithStringProp");
+        
+        TextMessageData textMessageData = new TextMessageData(textContent);
+        textMessageData.addProperty("KEY", "valueTest2");
+
+        LOGGER.info("Creating and sending TextMessage to queue " + queueName);
+        service.perform().sendMessage(textMessageData, queueName);
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message textMessageData", attachment.getLabel());
+
+        LOGGER.info("Receiving TextMessage from queue " + queueName);
+        String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, "KEY='valueTest2'", 20);
+
+        Assert.assertNotNull(receivedMessageText);
+        Assert.assertTrue(StringUtils.equalsIgnoreCase(textContent, receivedMessageText));
+
+        LOGGER.info("End testBasicJmsTextMessageDataWithStringProp");
+    }
+    
+    @Test
+    public void testBasicJmsTextMessageDataWithStringProp_wrongSelector() throws UnsupportedEncodingException {
+        String queueName = QUEUE_NAME + ".TextMessage.3";
+        String textContent = UUID.randomUUID().toString();
+
+        LOGGER.info("Begin testBasicJmsTextMessageDataWithStringProp_wrongSelector");
+        
+        TextMessageData textMessageData = new TextMessageData(textContent);
+        textMessageData.addProperty("KEY", "valueTest3");
+
+        LOGGER.info("Creating and sending TextMessage to queue " + queueName);
+        service.perform().sendMessage(textMessageData, queueName);
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message textMessageData", attachment.getLabel());
+
+        LOGGER.info("Receiving TextMessage from queue " + queueName);
+        String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, "KEY='valueTestNOT-THERE'", 20);
+
+        Assert.assertNotNull(receivedMessageText);
+        Assert.assertTrue(StringUtils.equalsIgnoreCase("", receivedMessageText));
+
+        LOGGER.info("End testBasicJmsTextMessageDataWithStringProp_wrongSelector");
+    }
+    
+    @Test
+    public void testBasicJmsFileMessageData() throws IOException {
+    	
+    	LOGGER.info("Begin testBasicJmsFileMessageData");
+    	String queueName = QUEUE_NAME + ".FileMessage.1";
+        String fileUri = "/config/jmsTest/jms.properties";
+        FileMessageData fileMessageData = new FileMessageData(fileUri);
+
+        LOGGER.info("Creating and sending FileMessage to queue " + queueName);
+
+        service.perform().sendMessage(fileMessageData, queueName);
+        
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message fileMessageData", attachment.getLabel());
+		
+        LOGGER.info("Receiving TextMessage from queue " + queueName);
+        String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, null, 20);
+
+        Assert.assertNotNull(receivedMessageText);
+        
+        //verify content
+        Assert.assertEquals(IOUtil.getContentOfURI(fileUri), receivedMessageText);
+
+        LOGGER.info("End testBasicJmsFileMessageData");
+    }
+    
+    @Test
+    public void testBasicJmsFileMessageDataWithStringProp() throws IOException {
+    	
+    	LOGGER.info("Begin testBasicJmsFileMessageDataWithStringProp");
+        String queueName = QUEUE_NAME + ".FileMessage.2";
+        String fileUri = "/config/jmsTest/jms.properties";
+        FileMessageData fileMessageData = new FileMessageData(fileUri);
+        fileMessageData.addProperty("KEYPROP", "propValue");
+
+        
+        LOGGER.info("Creating and sending FileMessage to queue " + queueName);
+
+        service.perform().sendMessage(fileMessageData, queueName);
+        
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message fileMessageData", attachment.getLabel());
+		
+        LOGGER.info("Receiving TextMessage from queue " + queueName);
+        String receivedMessageText = service.perform().receiveTextMessageFromQueue(queueName, "KEYPROP='propValue'", 20);
+
+        Assert.assertNotNull(receivedMessageText);
+        
+        //verify content
+        Assert.assertEquals(IOUtil.getContentOfURI(fileUri), receivedMessageText);
+
+        LOGGER.info("End testBasicJmsFileMessageDataWithStringProp");
+    }
+    
+    
+    @Test
+    public void testBasicJmsObjectMessageDataInteger() throws IOException {
+    	
+    	LOGGER.info("Begin testBasicJmsObjectMessageDataInteger");
+    	String queueName = QUEUE_NAME + ".ObjectMessage.1";
+        
+    	Integer messageObject = new Integer(12);
+    	
+    	ObjectMessageData objectMessageData = new ObjectMessageData();
+    	objectMessageData.setMessageObject(messageObject);
+
+        LOGGER.info("Creating and sending ObjectMessage to queue " + queueName);
+
+        service.perform().sendMessage(objectMessageData, queueName);
+        
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message objectMessageData", attachment.getLabel());
+		
+        LOGGER.info("Receiving ObjectMessage from queue " + queueName);
+        Object receivedMessageObject = service.perform().receiveObjectMessageFromQueue(queueName, null, 20);
+
+        Assert.assertNotNull(receivedMessageObject);
+        
+        Assert.assertTrue(receivedMessageObject instanceof Integer);
+        //apply cast
+        receivedMessageObject = (Integer) receivedMessageObject;
+        
+        //verify content
+        Assert.assertEquals(messageObject, receivedMessageObject);
+
+        LOGGER.info("End testBasicJmsObjectMessageDataInteger");
+    }
+    
+    @Test
+    public void testBasicJmsObjectMessageDataIntegerWithProp() throws IOException {
+    	
+    	LOGGER.info("Begin testBasicJmsObjectMessageDataIntegerWithProp");
+    	String queueName = QUEUE_NAME + ".ObjectMessage.2";
+        
+    	Integer messageObject = new Integer(12);
+    	
+    	ObjectMessageData objectMessageData = new ObjectMessageData();
+    	objectMessageData.setMessageObject(messageObject);
+    	objectMessageData.addProperty("KEYOBJPROP", "valueInt");
+
+        LOGGER.info("Creating and sending ObjectMessage to queue " + queueName);
+
+        service.perform().sendMessage(objectMessageData, queueName);
+        
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message objectMessageData", attachment.getLabel());
+		
+        LOGGER.info("Receiving ObjectMessage from queue " + queueName);
+        Object receivedMessageObject = service.perform().receiveObjectMessageFromQueue(queueName, "KEYOBJPROP='valueInt'", 20);
+
+        Assert.assertNotNull(receivedMessageObject);
+        
+        Assert.assertTrue(receivedMessageObject instanceof Integer);
+        //apply cast
+        receivedMessageObject = (Integer) receivedMessageObject;
+        
+        //verify content
+        Assert.assertEquals(messageObject, receivedMessageObject);
+
+        LOGGER.info("End testBasicJmsObjectMessageDataIntegerWithProp");
+    }
+    
+    
+    @Test
+    public void testBasicJmsObjectMessageDataOtherObj() throws IOException {
+    	
+    	LOGGER.info("Begin testBasicJmsObjectMessageDataOtherObj");
+    	String queueName = QUEUE_NAME + ".ObjectMessage.3";
+        
+    	String name = "testBasicJmsObjectMessageDataOtherObj";
+    	ObjDataTest objectToSend = new ObjDataTest(name);
+    	
+    	
+    	ObjectMessageData objectMessageData = new ObjectMessageData();
+    	objectMessageData.setMessageObject(objectToSend);
+
+        LOGGER.info("Creating and sending ObjectMessage to queue " + queueName);
+
+        service.perform().sendMessage(objectMessageData, queueName);
+        
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message objectMessageData", attachment.getLabel());
+		
+        LOGGER.info("Receiving ObjectMessage from queue " + queueName);
+        Object receivedMessageObject = service.perform().receiveObjectMessageFromQueue(queueName, null, 20);
+
+        Assert.assertNotNull(receivedMessageObject);
+        
+        Assert.assertTrue(receivedMessageObject instanceof ObjDataTest);
+        //apply cast
+        ObjDataTest objDataTest = (ObjDataTest) receivedMessageObject;
+        
+        //verify content
+        Assert.assertEquals(objectToSend.getName(), objDataTest.getName());
+
+        LOGGER.info("End testBasicJmsObjectMessageDataOtherObj");
+    }
+    
+    @Test
+    public void testBasicJmsObjectMessageDataOtherObjWithProp() throws IOException {
+    	
+    	LOGGER.info("Begin testBasicJmsObjectMessageDataOtherObjWithProp");
+    	String queueName = QUEUE_NAME + ".ObjectMessage.4";       
+
+    	String name = "testBasicJmsObjectMessageDataOtherObjWithProp";
+    	ObjDataTest objectToSend = new ObjDataTest(name);
+
+    	ObjectMessageData objectMessageData = new ObjectMessageData();
+    	objectMessageData.setMessageObject(objectToSend);
+    	objectMessageData.addProperty("KEYOBJPROP", "valueObj");
+
+        LOGGER.info("Creating and sending ObjectMessage to queue " + queueName);
+
+        service.perform().sendMessage(objectMessageData, queueName);
+        
+        // verify attachment
+        Iterator<Attachment> atIterator = getLastTestStep().getAttachments().iterator();
+        assertTrue(atIterator.hasNext());
+        Attachment attachment = atIterator.next();
+		assertEquals("Message objectMessageData", attachment.getLabel());
+		
+        LOGGER.info("Receiving ObjectMessage from queue " + queueName);
+        Object receivedMessageObject = service.perform().receiveObjectMessageFromQueue(queueName, "KEYOBJPROP='valueObj'", 20);
+
+        Assert.assertNotNull(receivedMessageObject);
+        
+        Assert.assertTrue(receivedMessageObject instanceof ObjDataTest);
+        //apply cast
+        ObjDataTest objDataTest = (ObjDataTest) receivedMessageObject;
+        
+        //verify content
+        Assert.assertEquals(objectToSend.getName(), objDataTest.getName());
+
+        LOGGER.info("End testBasicJmsObjectMessageDataOtherObjWithProp");
     }
     
 }
