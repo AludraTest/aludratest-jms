@@ -394,13 +394,13 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 		LOGGER.debug("Creating topic-subscriber for topic " + destinationName + " and subscription name " + subscriptionName);
 	    try {
 			Connection c = createDynamicConnection(subscriptionName);
-			TopicSession ts = (TopicSession) c.createSession(false, Session.AUTO_ACKNOWLEDGE);
+			Session ts = (Session) c.createSession(false, Session.AUTO_ACKNOWLEDGE);
 			Topic topic = lookupTopic(destinationName);
 			TopicSubscriber subscriber;
 			if (durable) {
 				subscriber = ts.createDurableSubscriber(topic, subscriptionName, messageSelector, false);
 			} else {
-				subscriber = ts.createSubscriber(topic, messageSelector, true);
+				subscriber = ts.createDurableSubscriber(topic, subscriptionName, messageSelector, true);
 			}
 			TopicHandler handler = new TopicHandler(subscriptionName, durable, subscriber, c);
 		    this.topicHandlers.put(subscriptionName, handler);
