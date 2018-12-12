@@ -35,7 +35,6 @@ import javax.jms.Session;
 import javax.jms.TextMessage;
 import javax.jms.Topic;
 import javax.jms.TopicSession;
-import javax.jms.TopicSubscriber;
 import javax.naming.InitialContext;
 import javax.naming.NamingException;
 
@@ -396,11 +395,11 @@ public class JmsActionImpl implements JmsInteraction, JmsCondition, JmsVerificat
 			Connection c = createDynamicConnection(subscriptionName);
 			Session ts = (Session) c.createSession(false, Session.AUTO_ACKNOWLEDGE);
 			Topic topic = lookupTopic(destinationName);
-			TopicSubscriber subscriber;
+			MessageConsumer subscriber;
 			if (durable) {
 				subscriber = ts.createDurableSubscriber(topic, subscriptionName, messageSelector, false);
 			} else {
-				subscriber = ts.createDurableSubscriber(topic, subscriptionName, messageSelector, true);
+				subscriber = ts.createConsumer(topic, messageSelector, true);
 			}
 			TopicHandler handler = new TopicHandler(subscriptionName, durable, subscriber, c);
 		    this.topicHandlers.put(subscriptionName, handler);
