@@ -20,24 +20,24 @@ import java.io.Closeable;
 import javax.jms.Connection;
 import javax.jms.JMSException;
 import javax.jms.Message;
-import javax.jms.TopicSubscriber;
+import javax.jms.MessageConsumer;
 
 import org.aludratest.exception.AccessFailure;
 import org.aludratest.exception.AutomationException;
 
 /**
- * Encapsulates access to {@link TopicSubscriber} and underlying {@link Connection}.
+ * Encapsulates access to {@link MessageConsumer} and underlying {@link Connection}.
  * @author Volker Bergmann
  */
 
 public class TopicHandler implements Closeable {
 	
-	private TopicSubscriber subscriber;
+	private MessageConsumer subscriber;
 	private Connection connection;
 	private String subscriptionName;
 	boolean durable;
 	
-	public TopicHandler(String subscriptionName, boolean durable, TopicSubscriber subscriber, Connection connection) {
+	public TopicHandler(String subscriptionName, boolean durable, MessageConsumer subscriber, Connection connection) {
 		this.subscriptionName = subscriptionName;
 		this.durable = durable;
 		this.subscriber = subscriber;
